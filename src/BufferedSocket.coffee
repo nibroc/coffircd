@@ -22,7 +22,7 @@ class BufferedSocket
 		@socket.write(data, handler)
 
 	on: (event, handler) ->
-		if event is 'readLine'
+		if event is 'line'
 			@emitter.addListener(event, handler)
 		else
 			@socket.addListener(event, handler)
@@ -39,7 +39,7 @@ class BufferedSocket
 			return unless lines.length > 1
 
 			# The last line is an incomplete line, so we can't flush it yet
-			(@emitter.emit 'readLine', line.trim()) for line in lines.slice(0, lines.length - 1)
+			(@emitter.emit 'line', line.trim()) for line in lines.slice(0, lines.length - 1)
 
 			# We do need to buffer the last line though
 			@buffer = lines[lines.length - 1]

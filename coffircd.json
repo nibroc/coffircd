@@ -1,8 +1,8 @@
 {
-  "serverName": "localhost"
-  "listenAddress": "*",
+  "serverName": "localhost",
+  "listenAddress": null,
   "listenPort": 6667,
-  "maximumUsers": null, 
+  "maximumUsers": null,
   "maximumChannels": null,
   "premadeChannels": [],
   "createChannelOnJoin": true,

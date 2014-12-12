@@ -1,5 +1,5 @@
-net = require('net')
 logger = require('winston')
+net = require('net')
 
 BufferedSocket = require('./BufferedSocket')
 Channel = require('./Channel')
@@ -10,14 +10,14 @@ User = require('./User')
 ERROR_CODES = require('./Irc').ERROR_CODES
 
 class IrcDaemon
-	constructor: (@port, @host = null) ->
+	constructor: (@options) ->
 		@users = {}
 		@sockets = {}
 		@channels = {}
 		@handler = new CommandExecutor(this)
 
 	hasUser: (nick) ->
-		return !!@users[nick]
+		!!@users[nick]
 
 	removeUser: (user) ->
 		usr = @users[Irc.normalize(user.nick)]
@@ -26,7 +26,8 @@ class IrcDaemon
 			delete @users[Irc.normalize(user.nick)]
 
 	acceptUser: (socket) ->
-		# Book keeping
+		# Set the User as a property of the socket (kind of eww...) so that we can efficiently find the User when socket 
+		# events happen.
 		bufferedSocket = new BufferedSocket(socket)
 		socket._coffircd_user = new User(this, bufferedSocket)
 		bufferedSocket._coffircd_user = socket._coffircd_user
@@ -34,15 +35,17 @@ class IrcDaemon
 		logger.info "Received connection from #{socket.address().address}:#{socket.remotePort}"
 
 		# Give the user 10 seconds to register
-		setTimeout @_verifyUserRegistered(socket), 10000
+		setTimeout(@_verifyUserRegistered(socket), 10000)
 
 		# Setup event handling for the user socket
-		@_bindSocketEvents bufferedSocket
+		@_bindSocketEvents(bufferedSocket)
 
 	start: ->
-		@server = net.createServer @acceptUser.bind(this)
-		@server.listen(@port, @host)
-		logger.info "Server started on port #{@port} (host: #{@host})"
+		port = @options.listenPort || 6667
+		host = @options.listenAddress || null
+		@server = net.createServer(@acceptUser.bind(this))
+		@server.listen(port, host)
+		logger.info "Server started on port #{port} (host: #{host})"
 
 	createChannel: (name) ->
 		@channels[Irc.normalize(name)] = new Channel(this, name)
@@ -84,7 +87,7 @@ class IrcDaemon
 		socket.on 'close', (hasError) =>
 			@_removeUserBySocket(socket)
 
-		socket.on 'readLine', (line) =>
+		socket.on 'line', (line) =>
 			@_log 'debug', socket, "recv: #{line}"
 
 			user = @_getUserBySocket(socket)
