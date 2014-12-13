@@ -10,14 +10,20 @@ User = require('./User')
 ERROR_CODES = require('./Irc').ERROR_CODES
 
 class IrcDaemon
+	# Public: creates a daemon instance configured as per +options+.
+	#
+	# options - The object of options that should be used for configuring the daemon. Keys should include:
+	#		  serverName    - The name of the server as it should be seen by IRC clients (e.g. the domain name of the server).
+  #			listenAddress - The address the server should listen on (e.g. 127.0.0.1, somesite.tld, etc).
+  #			listenPort    - The port the server should listen on.
 	constructor: (@options) ->
 		@users = {}
 		@sockets = {}
 		@channels = {}
 		@handler = new CommandExecutor(this)
 
-	hasUser: (nick) ->
-		!!@users[nick]
+	getUser: (nick) ->
+		@users[Irc.normalize(nick)]
 
 	removeUser: (user) ->
 		usr = @users[Irc.normalize(user.nick)]
@@ -52,9 +58,6 @@ class IrcDaemon
 
 	getChannelByName: (name) ->
 		@channels[Irc.normalize(name)]
-
-	getUserByNick: (nick) ->
-		@users[Irc.normalize(nick)]
 
 	disconnect: (user) ->
 		@_removeUserBySocket(user.socket)
@@ -94,17 +97,11 @@ class IrcDaemon
 
 			command = @_parseCommand(line)
 
-			unless user.registered or command.command in ['NICK', 'USER']
-				logger.info "Ignoring command '#{command.command}' from unregistered user"
-				user.sendNumeric ERROR_CODES.ERR_UNKNOWNCOMMAND, "Unregognized command: #{command.command}"
-				return
-
-			if @handler.handles(command.command)
-				target = command.command
+			if user.registered or command.command in ['NICK', 'USER']
+				@handler.handle(user, command.command, command.arguments)
 			else
-				target = 'unknown'
-
-			@handler[target](user, command.arguments, command.command)
+				logger.info "Ignoring command '#{command.command}' from unregistered user"
+				user.sendNumeric ERROR_CODES.ERR_UNKNOWNCOMMAND, "Unrecognized command: #{command.command}"
 
 		socket.on 'error', (err) =>
 			@_removeUserBySocket(socket)

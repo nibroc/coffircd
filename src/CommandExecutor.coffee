@@ -28,11 +28,11 @@ class CommandExecutor
   unknown: (user, args, command) ->
     logger.info "Received unknown command: #{command}"
 
-  handles: (command) ->
-    typeof this[command] is 'function'
-
   handle: (user, command, args) ->
-    this[command](user, args, command) if this[command]
+    if this[command]
+      this[command](user, args, command)
+    else
+      @unknown(user, args, command)
 
   JOIN: (user, args) ->
     # JOIN ( <channel> *( "," <channel> ) [ <key> *( "," <key> ) ] ) / "0"
