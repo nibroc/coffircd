@@ -11,4 +11,4 @@ logger.debug -> 'test'
 config = JSON.parse(fs.readFileSync('coffircd.json', 'utf8'))
 logger.debug "Loaded configuration (coffircd.json): #{JSON.stringify(config)}"
 
-new IrcDaemon(config).start()
+new IrcDaemon(config)

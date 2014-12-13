@@ -7,5 +7,6 @@
   "premadeChannels": [],
   "createChannelOnJoin": true,
   "defaultChannelModes": "",
-  "defaultUserModes": "w"
+  "defaultUserModes": "w",
+  "authTimeout": false
 }
