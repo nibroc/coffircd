@@ -9,7 +9,7 @@ User = require('./User')
 
 ERROR_CODES = Irc.ERROR_CODES
 
-class IrcDaemon
+class IrcServer
 	# Public: creates a daemon instance configured as per +options+.
 	#
 	# options - The object of options that should be used for configuring the daemon. Keys should include:
@@ -154,4 +154,4 @@ class IrcDaemon
 			msg = "#{address.address}:#{address.port} -- #{msg}"
 		logger[level](msg)
 
-module.exports = IrcDaemon
+module.exports = IrcServer
