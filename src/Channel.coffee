@@ -29,10 +29,10 @@ class Channel
     else
       channelPrefix = '='
 
-    user.sendNumeric(ERROR_CODES.RPL_NAMREPLY, channelPrefix, @name, ':' + @getUserNicksWithModePrefixes().join(' '))
+    user.sendNumeric(ERROR_CODES.RPL_NAMREPLY, channelPrefix, @name, @getUserNicksWithModePrefixes().join(' '))
 
     # RPL_ENDOFNAMES format: <channel> :End of NAMES list
-    user.sendNumeric(ERROR_CODES.RPL_ENDOFNAMES, @name, ':End of NAMES list')
+    user.sendNumeric(ERROR_CODES.RPL_ENDOFNAMES, @name, 'End of NAMES list')
 
     user.join(this)
 

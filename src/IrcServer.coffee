@@ -131,17 +131,19 @@ class IrcServer
 			@_removeUserBySocket(socket)
 
 		socket.on 'line', (line) =>
+			# Per RFC 2812, empty messages must be ignored
+			return if line.length is 0
+
 			@_log 'debug', socket, "recv: #{line}"
 
 			user = @_getUserBySocket(socket)
 
 			command = @_parseCommand(line)
 
-			if user.registered or command.command in ['NICK', 'USER']
-				@handler.handle(user, command.command, command.arguments)
+			if user.isRestricted() && command.command not in ['NICK', 'USER']
+				user.sendNumeric(ERROR_CODES.ERR_RESTRICTED, 'your connection is restricted')
 			else
-				logger.info "Ignoring command '#{command.command}' from unregistered user"
-				user.sendNumeric ERROR_CODES.ERR_UNKNOWNCOMMAND, "Unrecognized command: #{command.command}"
+				@handler.handle(user, command.command, command.arguments)
 
 		socket.on 'error', (err) =>
 			@_removeUserBySocket(socket)

@@ -6,27 +6,9 @@ ERROR_CODES = Irc.ERROR_CODES
 class CommandExecutor
   constructor: (@server) ->
 
-  NICK: (user, args) ->
-    #args: nick
-    console.log(args)
-    if args.length isnt 1
-      return user.sendError(ERROR_CODES.NICK_MISSING_NICK, 'nick must be provided')
-    user.nick = args[0]
-    user.sendWithMessage('NICK', user.nick)
-    user.register()
-
-  USER: (user, args) ->
-    # args: user, hostname, unused, realname
-    if args.length isnt 4
-      return user.sendError(ERROR_CODES.ERR_NEEDMOREPARAMS, 'USER', 'Wrong number of parameters')
-    if user.registered
-      return user.sendError(ERROR_CODES.ERR_ALREADYREGISTRED, 'You are already registered')
-    user.user = args[0]
-    user.realname = args[3]
-    user.register()
-
   unknown: (user, args, command) ->
     logger.info "Received unknown command: #{command}"
+    user.sendNumeric(ERROR_CODES.ERR_UNKNOWNCOMMAND, "Unrecognized command: #{command.command}")
 
   handle: (user, command, args) ->
     if this[command]
@@ -34,13 +16,42 @@ class CommandExecutor
     else
       @unknown(user, args, command)
 
+  NICK: (user, args) ->
+    #args: nick
+    nick = args[0] || ''
+    if nick.length is 0
+      return user.sendNumeric(ERROR_CODES.ERR_NONICKNAMEGIVEN, 'nick must be provided')
+    else if !Irc.isValidNickName(nick)
+      logger.debug "Irc.isValidNick('#{nick}') = #{Irc.isValidNick(nick)}"
+      return user.sendNumeric(ERROR_CODES.ERR_ERRONEUSNICKNAME, 'invalid nick format')
+    else if @server.getUser(nick)
+      return user.sendNumeric(ERROR_CODES.ERR_NICKNAMEINUSE, "the nick #{nick} is already in use")
+    # TODO: Figure out what mode +r (restricted) means
+    # else if user.isRestricted()
+    #  return user.sendNumeric(ERROR_CODES.ERR_RESTRICTED, 'your connection is restricted')
+    # TODO: ERR_UNAVAILRESOURCE should be implemented for throttling
+    # FUTURE: ERR_NICKCOLLISION will need to be handled if/when multi-server support is ever added.
+    user.nick = nick
+    user.sendWithMessage('NICK', user.nick)
+    user.register()
+
+  USER: (user, args) ->
+    # args: user, hostname, unused, realname
+    if args.length isnt 4
+      return user.sendNumeric(ERROR_CODES.ERR_NEEDMOREPARAMS, 'USER', 'Wrong number of parameters')
+    if user.registered
+      return user.sendNumeric(ERROR_CODES.ERR_ALREADYREGISTRED, 'You are already registered')
+    user.user = args[0]
+    user.realname = args[3]
+    user.register()
+
   JOIN: (user, args) ->
     # JOIN ( <channel> *( "," <channel> ) [ <key> *( "," <key> ) ] ) / "0"
     # Responses: ERR_NEEDMOREPARAMS, ERR_BANNEDFROMCHAN, ERR_INVITEONLYCHAN,
     # ERR_BADCHANNELKEY, ERR_CHANNELISFULL, ERR_BADCHANMASK, ERR_NOSUCHCHANNEL, ERR_TOOMANYCHANNELS,
     # ERR_TOOMANYTARGETS, ERR_UNAVAILRESOURCE, RPL_TOPIC
     if args.length is 0 or args.length > 2
-      user.sendError(ERROR_CODES.ERR_NEEDMOREPARAMS, 'JOIN', 'Wrong number of parameters')
+      user.sendNumeric(ERROR_CODES.ERR_NEEDMOREPARAMS, 'JOIN', 'Wrong number of parameters')
     else
       if args[0] is '0'
         # TODO Quit all channels the user is in
@@ -53,7 +64,7 @@ class CommandExecutor
     channels = (args[0] || '').split(',')
     message = (args[1] || '')
     if channels.length is 0
-      user.sendError(ERROR_CODES.ERR_NEEDMOREPARAMS, 'PART', 'Wrong number of parameters')
+      user.sendNumeric(ERROR_CODES.ERR_NEEDMOREPARAMS, 'PART', 'Wrong number of parameters')
     else
       channels.forEach (channelName) =>
         channel = @server.getChannelByName(channelName)
@@ -61,9 +72,9 @@ class CommandExecutor
           if channel.hasUser(user)
             channel.part(user, message)
           else
-            user.sendError(ERROR_CODES.ERR_NOTONCHANNEL, 'PART', channelName, "You are not in the channel #{channelName}")
+            user.sendNumeric(ERROR_CODES.ERR_NOTONCHANNEL, 'PART', channelName, "You are not in the channel #{channelName}")
         else
-          user.sendError(ERROR_CODES.ERR_NOSUCHCHANNEL, 'PART', channelName, "The channel #{channelName} does not exist")
+          user.sendNumeric(ERROR_CODES.ERR_NOSUCHCHANNEL, 'PART', channelName, "The channel #{channelName} does not exist")
 
   PRIVMSG: (user, args) ->
     # PRIVMSG <nick|channel> :<text to be sent>
@@ -72,15 +83,15 @@ class CommandExecutor
     target = args[0]
     msg = args[1]
     if !target || target.length is 0
-      user.sendError(ERROR_CODES.ERR_NORECIPIENT, 'No recepient given (PRIVMSG)')
+      user.sendNumeric(ERROR_CODES.ERR_NORECIPIENT, 'No recepient given (PRIVMSG)')
     else if !msg || msg.length is 0
-      user.sendError(ERROR_CODES.ERR_NOSUCHNICK, 'No recepient given (PRIVMSG)')
+      user.sendNumeric(ERROR_CODES.ERR_NOSUCHNICK, 'No recepient given (PRIVMSG)')
     else
       sendTarget = @_getChannelOrUserByName(target)
       if sendTarget
         sendTarget.privmsg(user, msg)
       else
-        user.sendError(ERROR_CODES.ERR_NOSUCHNICK, target, 'No such nick/channel')
+        user.sendNumeric(ERROR_CODES.ERR_NOSUCHNICK, target, 'No such nick/channel')
 
   QUIT: (user, args) ->
     user.quit(args[0] || '')

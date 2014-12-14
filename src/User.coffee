@@ -21,6 +21,9 @@ class User
   getFullHost: ->
     "#{@nick}!#{@user}@#{@hostname}"
 
+  isRestricted: ->
+    !@registered
+
   register: ->
     return if @registered
     return unless @user && @nick && @realname
@@ -40,17 +43,14 @@ class User
     msg += ' :' + message if message
     @_sendRaw(msg)
 
-  sendNumeric: (code, pieces...) ->
-    logger.debug "Sending numeric code #{code} to #{@nick} with args #{pieces.join(' ')}"
-    @_sendRaw ":#{@serverName} #{('000' + code).slice(-3)} #{@nick || '*'} #{pieces.join(' ')}"
+  sendNumeric: (code, args..., message) ->
+    msg = [].concat(args).concat([':' + message]).join(' ')
+    @_sendRaw ":#{@serverName} #{('000' + code).slice(-3)} #{@nick || '*'} #{msg}"
 
   sendCommandFromUser: (user, command, args..., message) ->
     msg = [':' + user.getFullHost(), command].concat(args).join(' ')
     msg += ' :' + message if message
     @_sendRaw msg
-
-  sendError: (errorCode, args..., message) ->
-    @sendNumeric(errorCode, args.concat(':' + message).join(' '))
 
   addChannel: (channel) ->
     @channels[Irc.normalize(channel)] = channel
