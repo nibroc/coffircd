@@ -8,7 +8,7 @@ class CommandExecutor
 
   unknown: (user, args, command) ->
     logger.info "Received unknown command: #{command}"
-    user.sendNumeric(ERROR_CODES.ERR_UNKNOWNCOMMAND, "Unrecognized command: #{command.command}")
+    user.sendNumeric(ERROR_CODES.ERR_UNKNOWNCOMMAND, "Unrecognized command: #{command}")
 
   handle: (user, command, args) ->
     if this[command]
@@ -96,6 +96,22 @@ class CommandExecutor
   QUIT: (user, args) ->
     user.quit(args[0] || '')
     @server.disconnect(user)
+
+  WHO: (user, args) ->
+    mask = args[0] || null
+    oper = args[1] is 'o'
+
+    # ERR_NOSUCHSERVER RPL_WHOREPLY RPL_ENDOFWHO
+    # RPL_WHOREPLY "<channel> <user> <host> <server> <nick> ( "H" / "G" > ["*"] [ ( "@" / "+" ) ] :<hopcount> <real name>"
+    # 315    RPL_ENDOFWHO "<name> :End of WHO list"
+
+    # TODO: Support more than channel WHO.
+    # TODO: Support mode +i.
+    if mask.match(/^#/)
+
+    matchedUsers = []
+    user.sendNumeric(RPL_WHOREPLY, )
+    user.sendNumeric(RPL_ENDOFWHO, mask, 'End of WHO list')
 
   # TODO: this should be on IrcDaemon
   _getChannelOrUserByName: (name) ->
